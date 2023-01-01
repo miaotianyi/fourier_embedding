@@ -4,7 +4,7 @@ from torch import nn
 
 
 class SinusoidalEmbedding(nn.Module):
-    def __init__(self, embedding_dim, min_n=1, max_n=10000, progression="geometric"):
+    def __init__(self, embedding_dim, min_period=1*2*math.pi, max_period=10000*2*math.pi, progression="geometric"):
         """
         A non-trainable element-wise sinusoidal embedding layer
         that maps each real-valued scalar entry to a vector.
@@ -22,6 +22,8 @@ class SinusoidalEmbedding(nn.Module):
         For any scalar input `x`, sinusoidal functions `sin(x/n)` and `cos(x/n)`
         have period (wavelength) `2pi*n`.
         (Intuitive naming convention for those familiar with Fourier analysis.)
+        The minimum and maximum period lengths are specified as hyperparameters,
+        which are then used to derive `n = period/(2*pi)`.
         We then create `half_dim` different `n`s ranging from `min_n` to `max_n`
         according to a geometric or arithmetic progression.
         These `n`s will be used to determine wavelengths in `PE_sin` and `PE_cos`.
@@ -54,19 +56,23 @@ class SinusoidalEmbedding(nn.Module):
         embedding_dim : int
             The length of each embedding vector.
 
-        min_n : float
+        min_period : float, default: 1*2*math.pi
+            Constant to control the minimum wavelength (period), which is `n*2pi`.
 
-        max_n : float, default: 10000
+            We choose to use period instead of n
+
+        max_period : float, default: 10000*2*math.pi
             Constant to control the maximum wavelength (period), which is `n*2pi`.
 
-            The original transformer paper uses 10000.
+            The original transformer paper uses n=10000.
         """
         super().__init__()
         assert embedding_dim % 2 == 0, "embedding_dim must be even for sinusoidal embedding"
         self.embedding_dim = embedding_dim
-        assert min_n < max_n, "min_n must be less than max_n"
-        self.min_n = min_n
-        self.max_n = max_n
+        assert 0 < min_period < max_period, "min_period must be less than max_period; they both need to be positive"
+        self.min_period, self.max_period = min_period, max_period
+        self.min_n = min_period / (2 * math.pi)
+        self.max_n = max_period / (2 * math.pi)
         assert progression in ("geometric", "arithmetic"), "progression mode must be either geometric or arithmetic"
         self.progression = progression
 
