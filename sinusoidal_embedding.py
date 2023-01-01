@@ -4,7 +4,7 @@ from torch import nn
 
 
 class SinusoidalEmbedding(nn.Module):
-    def __init__(self, embedding_dim, min_period=1*2*math.pi, max_period=10000*2*math.pi, progression="geometric"):
+    def __init__(self, embedding_dim, min_period=2*math.pi, max_period=10000*2*math.pi, progression="geometric"):
         """
         A non-trainable element-wise sinusoidal embedding layer
         that maps each real-valued scalar entry to a vector.
@@ -56,10 +56,11 @@ class SinusoidalEmbedding(nn.Module):
         embedding_dim : int
             The length of each embedding vector.
 
-        min_period : float, default: 1*2*math.pi
+        min_period : float, default: 2*math.pi
             Constant to control the minimum wavelength (period), which is `n*2pi`.
 
-            We choose to use period instead of n
+            We choose to use period instead of n, because it saves
+            the mental toll to recalculate wavelength given n.
 
         max_period : float, default: 10000*2*math.pi
             Constant to control the maximum wavelength (period), which is `n*2pi`.
