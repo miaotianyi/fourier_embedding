@@ -33,7 +33,7 @@ class MyTestCase(unittest.TestCase):
         embedding_dim = 32
 
         # these layers are non-trainable
-        my_layer = SinusoidalEmbedding(embedding_dim)
+        my_layer = SinusoidalEmbedding(embedding_dim, period_range=(math.tau, 10000*math.tau))
         hf_layer = SinusoidalPositionEmbeddings(embedding_dim)
 
         with torch.inference_mode():
@@ -42,7 +42,8 @@ class MyTestCase(unittest.TestCase):
                     x = torch.arange(batch_size, dtype=dtype, device=device)
                     expected = hf_layer(x)
                     actual = my_layer(x)
-                    self.assertTrue(torch.allclose(expected, actual))  # add assertion here
+                    # numerical error tolerance within 1e-5
+                    self.assertTrue(torch.allclose(actual, expected, rtol=1e-5, atol=1e-5))
 
     def test_hf_nd(self):
         # HuggingFace sinusoidal embedding doesn't generalize to higher dimensional inputs
