@@ -4,14 +4,14 @@ import numpy as np
 import torch
 from torch import nn
 
-from typing import Sequence
+from typing import Sequence, Tuple
 
 
 class SinusoidalEmbedding(nn.Module):
     def __init__(self,
                  embedding_dim: int = None,
-                 period_range: Sequence[float, float] = None,
-                 freq_range: Sequence[float, float] = None,
+                 period_range: Tuple[float, float] = None,
+                 freq_range: Tuple[float, float] = None,
                  progression: str = "geometric",
                  periods: Sequence[float] = None,
                  frequencies: Sequence[float] = None):
