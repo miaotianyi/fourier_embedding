@@ -10,8 +10,8 @@ from typing import Sequence
 class SinusoidalEmbedding(nn.Module):
     def __init__(self,
                  embedding_dim: int = None,
-                 period_range: tuple[float, float] = None,
-                 freq_range: tuple[float, float] = None,
+                 period_range: Sequence[float, float] = None,
+                 freq_range: Sequence[float, float] = None,
                  progression: str = "geometric",
                  periods: Sequence[float] = None,
                  frequencies: Sequence[float] = None):
