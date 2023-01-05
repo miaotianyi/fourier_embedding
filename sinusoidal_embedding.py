@@ -1,12 +1,20 @@
 import math
+
+import numpy as np
 import torch
 from torch import nn
 
+from typing import Sequence
+
 
 class SinusoidalEmbedding(nn.Module):
-    def __init__(self, embedding_dim=None,
-                 min_period=2*math.pi, max_period=10000*2*math.pi, progression="geometric",
-                 periods=None):
+    def __init__(self,
+                 embedding_dim: int = None,
+                 period_range: tuple[float, float] = None,
+                 freq_range: tuple[float, float] = None,
+                 progression: str = "geometric",
+                 periods: Sequence[float] = None,
+                 frequencies: Sequence[float] = None):
         """
         A non-trainable element-wise sinusoidal embedding layer
         that maps each real-valued scalar entry to a vector.
@@ -60,7 +68,8 @@ class SinusoidalEmbedding(nn.Module):
         `PE_sin(x)[i] = sin(x / 10000^{i/(half_dim-1)})`;
         `PE_cos(x)[i] = cos(x / 10000^{i/(half_dim-1)})`.
         Here `i` is zero-indexed, ranging from `0` to `half_dim-1` inclusive.
-        So the sinusoidal wavelength ranges from `2pi` (when `i = 0`) to `10000*2pi` (when `i = half_dim-1`) inclusive.
+        So the sinusoidal wavelength ranges from
+        `2pi` (when `i = 0`) to `10000*2pi` (when `i = half_dim-1`) inclusive.
         Note that the `-1` in `half_dim-1` ensures `10000*2pi` wavelength is included.
         We avoid this `-1` issue altogether by using `torch.linspace`.
 
@@ -75,52 +84,111 @@ class SinusoidalEmbedding(nn.Module):
            while Transformer uses geometric progression from `w=1` to `w=10000` angular frequencies.
         3. You can pass in your own list of linear frequencies/periods.
 
+        Notes
+        -----
+        Internally, the angular frequency list `self.w` is stored as a numpy float64 array.
+        If the input tensor is a float tensor,
+        `self.w` will be cast to the input tensor's dtype.
+        Otherwise, `self.w` will be cast to torch's default float type (usually float32).
+
         Parameters
         ----------
         embedding_dim : int, default: None
             The length of each embedding vector.
 
-            If None, `periods` argument must be provided.
+            If None, `periods` or `frequencies` argument must be provided.
             Then `embedding_dim` will be inferred as `2*len(periods)`.
 
-        min_period : float, default: 2*math.pi
-            Constant to control the minimum wavelength (period), which is `n*2pi`.
+        period_range : tuple of float, default: None
+            The minimum and maximum of linear periods `T`,
+            parsed as `(min_period, max_period)`.
 
-            We choose to use period instead of n, because it saves
-            the mental toll to recalculate wavelength given n.
+            The default values `(2*math.pi, 10000*2*math.pi)` are
+            the choice of the original Transformer.
 
-        max_period : float, default: 10000*2*math.pi
-            Constant to control the maximum wavelength (period), which is `n*2pi`.
-
-            The original transformer paper uses n=10000.
+        freq_range : tuple of float, default: None
+            The minimum and maximum of linear frequencies `f`.
+            parsed as `(min_freq, max_freq)`.
 
         progression : str, default: "geometric"
             One of "geometric" or "arithmetic" to indicate progression type
-            from min_period to max_period.
+            from `min_period` to `max_period` (or from `min_freq` to `max_freq`).
+
+            If you want to customize more complicated progression types,
+            consider using `periods`/`frequencies` to pass in a list of periods/frequencies.
 
         periods : list of float, default: None
-            A list of wavelengths (periods) for sinusoidal embedding.
+            A list of custom linear periods for sinusoidal embedding.
 
-            This argument will override all previous arguments.
+            This argument will override `embedding_dim`, `period_range`, and `progression`.
             For example, `embedding_dim` will become `2*len(periods)` because there's
             one sine and one cosine transformation for each wavelength.
+
+            You cannot pass in `periods` and `frequencies` at the same time.
+
+        frequencies : list of float, default: None
+            A list of custom linear frequencies for sinusoidal embedding.
+
+            This argument will override `embedding_dim`, `freq_range`, and `progression`.
+            For example, `embedding_dim` will become `2*len(frequencies)`.
+
+            You cannot pass in `periods` and `frequencies` at the same time.
+
+        Attributes
+        ----------
+        embedding_dim : int
+            The embedding dimension
+
+        w : np.ndarray of shape [half_dim]
+            The list of angular frequencies used to generate `cos(wx)` and `sin(wx)`.
         """
         super().__init__()
-        if periods is None:     # use geometric/arithmetic progression to generate periods
-            self.periods = None
-            assert embedding_dim > 0, "embedding_dim must be positive"
-            assert embedding_dim % 2 == 0, "embedding_dim must be even for sinusoidal embedding"
-            self.embedding_dim = int(embedding_dim)
-            assert 0 < min_period < max_period, "min_period must be less than max_period; they both need to be positive"
-            self.min_period, self.max_period = min_period, max_period
-            self.min_n = min_period / (2 * math.pi)
-            self.max_n = max_period / (2 * math.pi)
-            assert progression in ("geometric", "arithmetic"), "progression mode must be either geometric or arithmetic"
-            self.progression = progression
-        else:
-            self.periods = [float(p) for p in periods]
 
-    def forward(self, x: torch.Tensor):  # output shape: x.shape + [dim]
+        if periods is not None:         # custom list of linear periods
+            assert len(periods) > 0, "list of linear periods must be nonempty"
+            self.w = math.tau / np.array([float(x) for x in periods])       # 2pi/T
+            return
+        if frequencies is not None:     # custom list of linear frequencies
+            assert len(frequencies) > 0, "list of linear frequencies must be nonempty"
+            self.w = math.tau * np.array([float(x) for x in frequencies])   # 2pi*f
+            return
+
+        # use arithmetic/geometric progression with endpoints to generate w
+        # some preparation useful for both frequency and period modes of specification
+        assert progression in ("geometric", "arithmetic"), "progression mode must be either geometric or arithmetic"
+        assert embedding_dim > 0, "embedding_dim must be positive"
+        assert embedding_dim % 2 == 0, "embedding_dim must be even for sinusoidal embedding"
+        embedding_dim = int(embedding_dim)
+        half_dim = embedding_dim // 2
+
+        if freq_range is not None:      # progression from min_freq to max_freq
+            min_freq, max_freq = freq_range
+            assert 0 < min_freq < max_freq, "min_freq must be less than max_freq; they both need to be positive"
+            if progression == "geometric":  # tau * freq
+                self.w = np.geomspace(min_freq * math.tau, max_freq * math.tau, num=half_dim, endpoint=True)
+            elif progression == "arithmetic":  # tau * freq
+                self.w = np.linspace(min_freq * math.tau,  max_freq * math.tau, num=half_dim, endpoint=True)
+            else:
+                raise ValueError(f"Unknown progression mode {progression}")
+            return
+        else:                           # progression from min_period to max_period
+            if period_range is None:
+                period_range = math.tau, 10000 * math.tau  # tau=2pi is better than pi!
+            min_period, max_period = period_range
+            assert 0 < min_period < max_period, "min_period must be less than max_period; they both need to be positive"
+            if progression == "geometric":      # tau / period
+                self.w = 1 / np.geomspace(min_period/math.tau, max_period/math.tau, num=half_dim, endpoint=True)
+            elif progression == "arithmetic":   # tau / period
+                self.w = 1 / np.linspace(min_period/math.tau, max_period/math.tau, num=half_dim, endpoint=True)
+            else:
+                raise ValueError(f"Unknown progression mode {progression}")
+            return
+
+    @property
+    def embedding_dim(self):
+        return len(self.w) * 2
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:  # output shape: x.shape + [embedding_dim]
         # original formula:
         # divisor = self.max_n ** (torch.arange(half_dim, device=device) / (half_dim - 1))
         # half_embeddings = x[..., None] / divisor
@@ -133,23 +201,10 @@ class SinusoidalEmbedding(nn.Module):
         # half_embeddings = x[..., None] * multiplier
 
         # My implementation
-        # supports min_n, max_n, and geometric/arithmetic progression
-        # uses linspace instead of arange; this makes exp log more useful
-        # multiplier is (2 pi / period), so it can be multiplied with x before taking sine/cosine
-        if self.periods is None:
-            half_dim = self.embedding_dim // 2
-            if self.progression == "geometric":
-                multiplier = torch.exp(torch.linspace(-math.log(self.min_n), -math.log(self.max_n), steps=half_dim,
-                                                      device=x.device))
-            elif self.progression == "arithmetic":
-                multiplier = 1 / torch.linspace(self.min_n, self.max_n, steps=half_dim,
-                                                device=x.device)
-            else:
-                raise ValueError(f"Unknown progression mode {self.progression}")
-        else:
-            multiplier = (2*math.pi) / torch.tensor(self.periods, device=x.device)
-            print("periods multiplier dtype", multiplier.dtype)
-        half_embeddings = x[..., None] * multiplier
+        w = torch.from_numpy(self.w).to(
+            device=x.device,
+            dtype=x.dtype if torch.is_floating_point(x) else torch.get_default_dtype())
+        half_embeddings = x[..., None] * w
 
         embeddings = torch.cat((half_embeddings.sin(), half_embeddings.cos()), dim=-1)
         return embeddings
