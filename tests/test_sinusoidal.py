@@ -4,7 +4,7 @@ import math
 import torch
 from torch import nn
 
-from sinusoidal_encoding import SinusoidalEncoding
+from layers.sinusoidal_encoding import SinusoidalEncoding
 
 
 # the following code is copied verbatim from
