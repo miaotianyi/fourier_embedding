@@ -7,7 +7,7 @@ from torch import nn
 from typing import Sequence, Tuple
 
 
-class SinusoidalEmbedding(nn.Module):
+class SinusoidalEncoding(nn.Module):
     def __init__(self,
                  embedding_dim: int = None,
                  period_range: Tuple[float, float] = None,

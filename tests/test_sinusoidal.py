@@ -4,7 +4,7 @@ import math
 import torch
 from torch import nn
 
-from sinusoidal_embedding import SinusoidalEmbedding
+from sinusoidal_embedding import SinusoidalEncoding
 
 
 # the following code is copied verbatim from
@@ -33,7 +33,7 @@ class MyTestCase(unittest.TestCase):
         embedding_dim = 32
 
         # these layers are non-trainable
-        my_layer = SinusoidalEmbedding(embedding_dim, period_range=(math.tau, 10000*math.tau))
+        my_layer = SinusoidalEncoding(embedding_dim, period_range=(math.tau, 10000 * math.tau))
         hf_layer = SinusoidalPositionEmbeddings(embedding_dim)
 
         with torch.inference_mode():
