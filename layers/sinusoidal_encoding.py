@@ -23,9 +23,9 @@ class SinusoidalEncoding(nn.Module):
         - Output: `(*, embedding_dim)`, where `*` is the input shape.
 
         This embedding is performed element-wise.
-        In short, a list of different angular frequencies `w` is generated;
-        we compute `sin(wx)` and `cos(wx)` for each `w` and
-        concatenate them along the embedding dimension.
+        In short, a list of different angular frequencies `w` is given by user;
+        for every scalar input `x`, we compute `sin(wx)` and `cos(wx)` for each `w`
+        and concatenate them along the embedding dimension.
 
         Output embedding size `embedding_dim` should be an even number `2*half_dim`.
         The output tensor `PE` has 2 components: `PE_sin` and `PE_cos`.
