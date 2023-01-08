@@ -1,9 +1,12 @@
+import math
 import torch
 from torch import nn
 
 
 class FourierFeatures(nn.Module):
-    def __init__(self, in_features: int, out_features: int, sigma=1., trainable: bool = False,
+    def __init__(self, in_features: int, out_features: int,
+                 sigma: float = 1.,
+                 trainable: bool = False,
                  device=None, dtype=None):
         """
         For input feature vector `x`, apply linear transformation
@@ -68,6 +71,7 @@ class FourierFeatures(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.linear(x)
+        x = math.tau * x
         x = torch.cat((x.sin(), x.cos()), dim=-1)
         return x
 
