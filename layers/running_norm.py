@@ -3,6 +3,10 @@ from torch import nn
 
 
 class RunningNorm(nn.Module):
+    running_mean: torch.Tensor
+    running_var: torch.Tensor
+    num_batches_tracked: torch.Tensor
+
     def __init__(self, num_features: int, eps: float = 1e-5, momentum: float = None,
                  device=None, dtype=None) -> None:
         """
@@ -49,12 +53,9 @@ class RunningNorm(nn.Module):
 
         self.register_buffer('running_mean', torch.zeros(num_features, **factory_kwargs))
         self.register_buffer('running_var', torch.ones(num_features, **factory_kwargs))
-        self.running_mean: torch.Tensor
-        self.running_var: torch.Tensor
         self.register_buffer('num_batches_tracked',
                              torch.tensor(0, dtype=torch.long,
                                           **{k: v for k, v in factory_kwargs.items() if k != 'dtype'}))
-        self.num_batches_tracked: torch.Tensor
         self.reset_running_stats()
 
     def reset_running_stats(self) -> None:
