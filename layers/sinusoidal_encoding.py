@@ -144,6 +144,10 @@ class SinusoidalEncoding(nn.Module):
         """
         super().__init__()
 
+        # internally, self.w (angular frequencies) is stored as a numpy array,
+        # not a non-persistent torch Module buffer,
+        # because w is deterministic given the initialization hyperparameters,
+        # and its dtype needs to be determined at runtime anyway.
         if periods is not None:         # custom list of linear periods
             assert len(periods) > 0, "list of linear periods must be nonempty"
             self.w = math.tau / np.array([float(x) for x in periods])       # 2pi/T
@@ -177,7 +181,7 @@ class SinusoidalEncoding(nn.Module):
             min_period, max_period = period_range
             assert 0 < min_period < max_period, "min_period must be less than max_period; they both need to be positive"
             if progression == "geometric":      # tau / period
-                self.w = 1 / np.geomspace(min_period/math.tau, max_period/math.tau, num=half_dim, endpoint=True)
+                self.w = np.geomspace(math.tau / min_period, math.tau / max_period, num=half_dim, endpoint=True)
             elif progression == "arithmetic":   # tau / period
                 self.w = 1 / np.linspace(min_period/math.tau, max_period/math.tau, num=half_dim, endpoint=True)
             else:
