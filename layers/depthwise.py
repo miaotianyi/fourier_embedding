@@ -60,6 +60,7 @@ class Depthwise1d(nn.Module):
         """
         super().__init__()
         factory_kwargs = {"device": device, "dtype": dtype}
+        self.num_channels = num_channels
         self.h_in = h_in
         self.h_out = h_out
         # this weight is shaped like this to preserve similarity to the Conv1d implementation
