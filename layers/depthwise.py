@@ -109,7 +109,3 @@ class CustomDepthwise1d(nn.Module):
             x = x + self.bias
         return x
 
-
-layer = CustomDepthwise1d(num_channels=10, h_in=5, h_out=7, bias=True)
-a = torch.rand(3, 10, 5)
-print(layer(a).shape)
