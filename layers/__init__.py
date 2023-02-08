@@ -1,10 +1,12 @@
 from .running_norm import RunningNorm
 from .sinusoidal_encoding import SinusoidalEncoding
 from .fourier_features import FourierFeatures
+from .depthwise import Depthwise1d
 
 
 __all__ = [
     "RunningNorm",
     "SinusoidalEncoding",
-    "FourierFeatures"
+    "FourierFeatures",
+    "Depthwise1d"
 ]
